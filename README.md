@@ -39,9 +39,16 @@ cmake -B build
 cmake --build build --config Release
 ```
 
+To target Windows on ARM64 with MSVC, pass `-A ARM64` (requires the ARM64 build tools component):
+
+```bash
+cmake -B build -A ARM64
+cmake --build build --config Release
+```
+
 ## Releases
 
-Pushing a tag matching `v*` (e.g. `v0.1.0`) triggers the `Release` GitHub Actions workflow (`.github/workflows/release.yml`), which cross-compiles `notepad.exe` with MinGW-w64 and publishes it as a zip attached to a GitHub Release.
+Pushing a tag matching `v*` (e.g. `v0.1.0`) triggers the `Release` GitHub Actions workflow (`.github/workflows/release.yml`), which builds `notepad.exe` for both **Windows x86_64** and **Windows ARM64** using MSVC on `windows-latest` runners, and publishes each as a separate zip attached to a GitHub Release.
 
 ```bash
 git tag v0.1.0
