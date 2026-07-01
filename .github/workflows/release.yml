@@ -9,37 +9,51 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - cmake_arch: x64
+            asset_arch: x86_64
+          - cmake_arch: ARM64
+            asset_arch: arm64
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install MinGW-w64
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y mingw-w64
-
       - name: Configure
-        run: |
-          cmake -B build -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
-            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
-            -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
+        run: cmake -B build -A ${{ matrix.cmake_arch }}
 
       - name: Build
         run: cmake --build build --config Release
 
       - name: Package
+        shell: pwsh
         run: |
-          mkdir -p dist
-          cp build/notepad.exe dist/
-          cp README.md LICENSE dist/
-          cd dist
-          zip -r "../notepad-${GITHUB_REF_NAME}-windows-x86_64.zip" .
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item build/Release/notepad.exe dist/
+          Copy-Item README.md dist/
+          Copy-Item LICENSE dist/
+          Compress-Archive -Path dist/* -DestinationPath "notepad-${{ github.ref_name }}-windows-${{ matrix.asset_arch }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepad-windows-${{ matrix.asset_arch }}
+          path: notepad-${{ github.ref_name }}-windows-${{ matrix.asset_arch }}.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: notepad-${{ github.ref_name }}-windows-x86_64.zip
+          files: artifacts/*/*.zip
           generate_release_notes: true

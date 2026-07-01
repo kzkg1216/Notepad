@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(NotepadMVP CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -9,4 +9,6 @@ target_link_libraries(notepad PRIVATE comdlg32 gdi32 user32 kernel32)
 
 if(MINGW)
   target_link_options(notepad PRIVATE -static -static-libgcc -static-libstdc++)
+elseif(MSVC)
+  set_property(TARGET notepad PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
