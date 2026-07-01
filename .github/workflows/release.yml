@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MinGW-w64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: Configure
+        run: |
+          cmake -B build -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+            -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp build/notepad.exe dist/
+          cp README.md LICENSE dist/
+          cd dist
+          zip -r "../notepad-${GITHUB_REF_NAME}-windows-x86_64.zip" .
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: notepad-${{ github.ref_name }}-windows-x86_64.zip
+          generate_release_notes: true

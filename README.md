@@ -39,4 +39,11 @@ cmake -B build
 cmake --build build --config Release
 ```
 
-The build commands above use plain CLI invocations only, so they can be dropped into a CI pipeline (e.g. GitHub Actions) as-is. A CI workflow is not included yet but is planned.
+## Releases
+
+Pushing a tag matching `v*` (e.g. `v0.1.0`) triggers the `Release` GitHub Actions workflow (`.github/workflows/release.yml`), which cross-compiles `notepad.exe` with MinGW-w64 and publishes it as a zip attached to a GitHub Release.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
