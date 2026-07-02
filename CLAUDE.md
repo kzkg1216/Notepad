@@ -4,66 +4,59 @@ Guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-**Notepad** is a minimal, lightweight Notepad clone for Windows, written in C++ using the plain Win32 API. It ships as a single, statically linked `notepad.exe` with no runtime dependencies.
+**Notepad** is a minimal Notepad clone for Windows with a modern WinUI 3 interface, written in C++ (C++/WinRT) on the Windows App SDK. It is deployed unpackaged and self-contained: the build output folder carries the Windows App SDK runtime next to `Notepad.exe`, so users unzip and run without installing anything.
 
 ## Requirements
 
 These decisions were made deliberately — do not change them without asking:
 
-- **Lightweight above all**: no external GUI libraries (no Qt, no Dear ImGui, no Electron-style runtimes). UI is built directly on the Win32 API with the standard multiline EDIT control.
-- **Feature scope is intentionally minimal**: New / Open / Save / Save As, plus Exit. Cut/copy/paste/undo come for free from the EDIT control's built-in shortcuts (Ctrl+X/C/V/Z) — no menu items for them. Unsaved-changes confirmation, word wrap toggle, and font selection are explicitly out of scope unless the user asks.
+- **UI framework is WinUI 3** (Windows App SDK, C++/WinRT). The project was migrated from plain Win32 at the user's request; do not migrate back or to another framework without asking.
+- **Deployment is unpackaged + self-contained** (`WindowsPackageType=None`, `WindowsAppSDKSelfContained=true`, `AppxPackage=false`). No MSIX packaging, no runtime installer requirement.
+- **Feature scope is intentionally minimal**: New / Open / Save / Save As, plus Exit. Cut/copy/paste/undo come for free from the WinUI `TextBox` (Ctrl+X/C/V/Z) — no menu items for them. Unsaved-changes confirmation, word wrap toggle, and font selection are explicitly out of scope unless the user asks.
+- **Modern design elements**: Mica system backdrop (`Window.SystemBackdrop`), WinUI `MenuBar`, `ContentDialog` for errors, automatic light/dark theme, per-monitor DPI (declared in `app.manifest`).
 - **All UI strings and documentation are in English** (menus, window title, dialogs, README, this file).
-- **Single source file**: the whole app lives in `src/main.cpp`. Do not split it into modules while the scope stays this small.
-- **Dependency-free binary**: MinGW builds statically link libgcc/libstdc++; MSVC builds statically link the CRT (`MSVC_RUNTIME_LIBRARY` in CMakeLists.txt). Keep it that way.
-- **Text encoding**: files are read/written as UTF-8 (no BOM). The EDIT control works in UTF-16; conversion is done with `MultiByteToWideChar` / `WideCharToMultiByte`. No encoding detection.
+- **Text encoding**: files are read/written as UTF-8 (no BOM), CRLF on save. The XAML `TextBox` reports line breaks as lone CR — `NormalizeToCrlf` handles this. Conversion uses `MultiByteToWideChar` / `WideCharToMultiByte`. No encoding detection.
+- **File dialogs** use the Win32 common item dialogs (`IFileOpenDialog`/`IFileSaveDialog`) — synchronous and reliable for unpackaged apps; do not switch to `Windows.Storage.Pickers` without asking.
+- **NuGet versions are pinned** in `src/packages.config` AND hard-coded in the import paths of `src/Notepad.vcxproj` (Microsoft.WindowsAppSDK, Microsoft.Windows.CppWinRT, Microsoft.Windows.SDK.BuildTools). When bumping a package, update both files consistently.
 
 ## Repository Layout
 
-- `src/main.cpp` — entire application (window, menu, file I/O)
-- `CMakeLists.txt` — build definition (CMake >= 3.15)
-- `.github/workflows/release.yml` — tag-triggered release builds
-- `README.md` — user-facing docs and build instructions
+- `Notepad.sln` — solution (NuGet restores to `packages/` next to it)
+- `src/Notepad.vcxproj` — project file (unpackaged, self-contained WinUI 3 desktop app)
+- `src/App.xaml(.h/.cpp)` — application class, loads `XamlControlsResources`
+- `src/MainWindow.xaml(.h/.cpp)` — the whole UI and file I/O logic
+- `src/Project.idl` — WinRT class declarations (MainWindow)
+- `src/pch.h/.cpp` — precompiled header
+- `src/app.manifest` — DPI awareness declaration
+- `src/Directory.Build.props`, `src/HybridCRT.props` — statically link the VC runtime/STL, dynamically link the UCRT
+- `.github/workflows/ci.yml` — PR/main builds; `release.yml` — tag-triggered release builds
 
 ## Building
 
-Development happens in a Linux container; the app targets Windows, so builds are cross-compiled.
-
-### Linux → Windows x86_64 (MinGW-w64)
+WinUI 3 / Windows App SDK **cannot** be cross-compiled with MinGW; MSVC on Windows is required. The development container is Linux, so local compilation is impossible — build verification happens on GitHub Actions (`windows-latest`).
 
 ```bash
-sudo apt-get install -y mingw-w64
-cmake -B build -DCMAKE_SYSTEM_NAME=Windows \
-  -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
-  -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
-  -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
-cmake --build build
-# produces build/notepad.exe
+nuget restore Notepad.sln
+msbuild Notepad.sln /m /p:Configuration=Release /p:Platform=x64   # or ARM64
 ```
 
-### Windows (MSVC)
-
-```bash
-cmake -B build            # or: cmake -B build -A ARM64
-cmake --build build --config Release
-```
-
-Note: apt's mingw-w64 has **no aarch64 target**, so Windows ARM64 builds require MSVC (done in CI on `windows-latest`).
+Output: `<Platform>/Release/` at the repo root (exe + Windows App SDK runtime DLLs + resources.pri).
 
 ## Verification
 
-- The `.exe` cannot run natively on Linux; verification is (a) a clean MinGW cross-compile and (b) code review of Win32 API usage. Use Wine for a smoke test if installed; otherwise final functional testing happens on real Windows.
-- Delete the `build/` directory before committing — build artifacts are gitignored but never belong in a commit.
+- From the Linux container: push the branch and run the CI workflow (it has `workflow_dispatch`) via the GitHub API/MCP tools, then read the job logs. Both x64 and ARM64 must build.
+- Functional testing happens on real Windows; Wine cannot run WinUI 3 apps reliably.
+- Never commit `packages/`, `x64/`, `ARM64/`, or `Generated Files/` — they are gitignored.
 
 ## Releases (CI/CD)
 
-- Every pull request (and push to `main`) triggers `.github/workflows/ci.yml`: a MinGW-w64 x86_64 cross-compile on `ubuntu-latest` plus MSVC x64/ARM64 builds on `windows-latest`. All three must pass before merging.
-- Pushing a tag matching `v*` triggers `.github/workflows/release.yml`: a matrix build on `windows-latest` compiles x86_64 (`cmake -A x64`) and ARM64 (`cmake -A ARM64`) with MSVC, zips each with README/LICENSE, and attaches both to a GitHub Release.
+- Every pull request (and push to `main`) triggers `.github/workflows/ci.yml`: MSVC x64 + ARM64 builds on `windows-latest`. `workflow_dispatch` is enabled for manual runs on any branch.
+- Pushing a tag matching `v*` triggers `.github/workflows/release.yml`: builds both platforms, strips `.pdb`/`.lib`/`.exp`/`.winmd`, zips each output folder with README/LICENSE, and attaches both zips to a GitHub Release.
 - The repository is public, so GitHub Actions minutes are free.
-- Keep build steps as plain CLI commands so README instructions and CI stay interchangeable.
 
 ## Conventions
 
-- Wide-character (`W`-suffixed) Win32 APIs everywhere; `UNICODE`/`_UNICODE` are defined at the top of `main.cpp`.
-- Entry point is `WinMain` (not `wWinMain`) — MinGW's CRT requires it.
-- `std::ifstream`/`std::ofstream` need `path.c_str()` (a `const wchar_t*`) on MinGW; passing `std::wstring` directly does not compile.
-- App state is a few globals (`g_hEdit`, `g_currentFilePath`); title format is `<filename or "Untitled"> - Notepad`.
+- C++/WinRT idioms throughout: `winrt::` projections, `com_ptr`, `hstring`. XAML event handlers are wired by name in XAML and implemented on the `implementation::MainWindow` type (no IDL entries needed for handlers).
+- App/window state lives in `MainWindow` members (`m_currentFilePath`, `_hwnd`); title format is `<filename or "Untitled"> - Notepad`.
+- The XAML-generated `wWinMain` is used (no hand-written entry point); `module.g.cpp` is compiled from `$(GeneratedFilesDir)`.
+- New XAML pages/windows follow the sample pattern: `.xaml` + `.xaml.h` + `.xaml.cpp` + an entry in `Project.idl`, with `#if __has_include("X.g.cpp")` includes.

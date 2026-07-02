@@ -13,29 +13,33 @@ jobs:
     strategy:
       matrix:
         include:
-          - cmake_arch: x64
+          - platform: x64
             asset_arch: x86_64
-          - cmake_arch: ARM64
+          - platform: ARM64
             asset_arch: arm64
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure
-        run: cmake -B build -A ${{ matrix.cmake_arch }}
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: nuget restore Notepad.sln
 
       - name: Build
-        run: cmake --build build --config Release
+        run: msbuild Notepad.sln /m /p:Configuration=Release /p:Platform=${{ matrix.platform }}
 
       - name: Package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item build/Release/notepad.exe dist/
-          Copy-Item README.md dist/
-          Copy-Item LICENSE dist/
-          Compress-Archive -Path dist/* -DestinationPath "notepad-${{ github.ref_name }}-windows-${{ matrix.asset_arch }}.zip"
+          $out = "${{ matrix.platform }}/Release"
+          # Drop build byproducts that end users do not need.
+          Remove-Item "$out/*.pdb", "$out/*.lib", "$out/*.exp", "$out/*.winmd", "$out/*.xml" -ErrorAction SilentlyContinue
+          Copy-Item README.md $out/
+          Copy-Item LICENSE $out/
+          Compress-Archive -Path "$out/*" -DestinationPath "notepad-${{ github.ref_name }}-windows-${{ matrix.asset_arch }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

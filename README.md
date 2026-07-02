@@ -1,54 +1,34 @@
 # Notepad
 
-A minimal, lightweight Notepad clone for Windows, written in C++ with the plain Win32 API (no external GUI libraries). It ships as a single, statically linked executable with no runtime dependencies.
+A minimal Notepad clone for Windows with a modern WinUI 3 interface, written in C++ (C++/WinRT) on the Windows App SDK. The app is deployed **unpackaged and self-contained**: the build output folder carries the Windows App SDK runtime alongside `Notepad.exe`, so nothing needs to be installed first — unzip and run.
 
 ## Features
 
-- New
-- Open
-- Save
-- Save As
+- New / Open / Save / Save As (File menu, with Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S accelerators)
+- Modern Windows 11 look: Mica window backdrop, WinUI 3 menu bar and dialogs, automatic light/dark theme, per-monitor DPI awareness
+- Basic text editing (cut/copy/paste/undo) comes from the WinUI `TextBox` via its built-in shortcuts (Ctrl+X/C/V/Z)
+- Files are read and written as UTF-8 (no BOM), CRLF line endings on save
 
-Basic text editing (cut/copy/paste/undo) is provided for free by the standard Win32 EDIT control via its built-in keyboard shortcuts (Ctrl+X/C/V/Z).
+## Requirements
+
+- Windows 10 21H2 (build 22000) or later; Windows 11 recommended (Mica backdrop falls back to a solid color on Windows 10)
 
 ## Building
 
-### Cross-compiling from Linux (MinGW-w64)
+Building requires Windows with Visual Studio 2022 (Desktop development with C++ workload, plus the ARM64 build tools component for ARM64 targets). WinUI 3 / Windows App SDK cannot be cross-compiled with MinGW.
 
 ```bash
-sudo apt-get install -y mingw-w64
-cmake -B build -DCMAKE_SYSTEM_NAME=Windows \
-  -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
-  -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
-  -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
-cmake --build build
-# produces build/notepad.exe
+nuget restore Notepad.sln
+msbuild Notepad.sln /m /p:Configuration=Release /p:Platform=x64
 ```
 
-### Native build on Windows (MinGW or MSVC)
+The self-contained output lands in `x64/Release/` (or `ARM64/Release/` when built with `/p:Platform=ARM64`).
 
-```bash
-cmake -B build -G "MinGW Makefiles"
-cmake --build build
-```
-
-or, with Visual Studio's generator:
-
-```bash
-cmake -B build
-cmake --build build --config Release
-```
-
-To target Windows on ARM64 with MSVC, pass `-A ARM64` (requires the ARM64 build tools component):
-
-```bash
-cmake -B build -A ARM64
-cmake --build build --config Release
-```
+You can also open `Notepad.sln` in Visual Studio 2022 and build from the IDE.
 
 ## Releases
 
-Pushing a tag matching `v*` (e.g. `v0.1.0`) triggers the `Release` GitHub Actions workflow (`.github/workflows/release.yml`), which builds `notepad.exe` for both **Windows x86_64** and **Windows ARM64** using MSVC on `windows-latest` runners, and publishes each as a separate zip attached to a GitHub Release.
+Pushing a tag matching `v*` (e.g. `v0.1.0`) triggers the `Release` GitHub Actions workflow (`.github/workflows/release.yml`), which builds the app for both **Windows x86_64** and **Windows ARM64** using MSVC on `windows-latest` runners, and publishes each self-contained build as a separate zip attached to a GitHub Release.
 
 ```bash
 git tag v0.1.0
