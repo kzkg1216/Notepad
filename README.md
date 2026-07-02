@@ -22,7 +22,7 @@ nuget restore Notepad.sln
 msbuild Notepad.sln /m /p:Configuration=Release /p:Platform=x64
 ```
 
-The self-contained output lands in `x64/Release/` (or `ARM64/Release/` when built with `/p:Platform=ARM64`).
+The self-contained output lands in `x64/Release/Notepad/` (or `ARM64/Release/Notepad/` when built with `/p:Platform=ARM64`).
 
 You can also open `Notepad.sln` in Visual Studio 2022 and build from the IDE.
 

@@ -40,7 +40,7 @@ nuget restore Notepad.sln
 msbuild Notepad.sln /m /p:Configuration=Release /p:Platform=x64   # or ARM64
 ```
 
-Output: `<Platform>/Release/` at the repo root (exe + Windows App SDK runtime DLLs + resources.pri).
+Output: `<Platform>/Release/Notepad/` at the repo root (exe + Windows App SDK runtime DLLs + resources.pri + MUI folders).
 
 ## Verification
 

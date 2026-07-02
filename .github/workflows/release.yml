@@ -34,7 +34,7 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          $out = "${{ matrix.platform }}/Release"
+          $out = "${{ matrix.platform }}/Release/Notepad"
           # Drop build byproducts that end users do not need.
           Remove-Item "$out/*.pdb", "$out/*.lib", "$out/*.exp", "$out/*.winmd", "$out/*.xml" -ErrorAction SilentlyContinue
           Copy-Item README.md $out/
