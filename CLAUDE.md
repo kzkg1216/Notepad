@@ -56,6 +56,7 @@ Note: apt's mingw-w64 has **no aarch64 target**, so Windows ARM64 builds require
 
 ## Releases (CI/CD)
 
+- Every pull request (and push to `main`) triggers `.github/workflows/ci.yml`: a MinGW-w64 x86_64 cross-compile on `ubuntu-latest` plus MSVC x64/ARM64 builds on `windows-latest`. All three must pass before merging.
 - Pushing a tag matching `v*` triggers `.github/workflows/release.yml`: a matrix build on `windows-latest` compiles x86_64 (`cmake -A x64`) and ARM64 (`cmake -A ARM64`) with MSVC, zips each with README/LICENSE, and attaches both to a GitHub Release.
 - The repository is public, so GitHub Actions minutes are free.
 - Keep build steps as plain CLI commands so README instructions and CI stay interchangeable.
