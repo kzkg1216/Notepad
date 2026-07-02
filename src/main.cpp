@@ -1,4 +1,4 @@
-// Minimal Win32 Notepad MVP: New / Open / Save / Save As.
+// Minimal Win32 Notepad: New / Open / Save / Save As.
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -19,8 +19,8 @@ constexpr int ID_FILE_SAVE = 1003;
 constexpr int ID_FILE_SAVEAS = 1004;
 constexpr int ID_FILE_EXIT = 1005;
 
-constexpr wchar_t kWindowClassName[] = L"NotepadMVPWindowClass";
-constexpr wchar_t kAppTitle[] = L"Notepad MVP";
+constexpr wchar_t kWindowClassName[] = L"NotepadWindowClass";
+constexpr wchar_t kAppTitle[] = L"Notepad";
 
 HWND g_hEdit = nullptr;
 std::wstring g_currentFilePath;

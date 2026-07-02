@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-mingw:
+    name: MinGW-w64 cross-compile (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MinGW-w64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: Configure
+        run: |
+          cmake -B build -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+            -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres
+        # Same invocation as the README's Linux cross-compile instructions.
+
+      - name: Build
+        run: cmake --build build
+
+  build-msvc:
+    name: MSVC build (${{ matrix.cmake_arch }})
+    strategy:
+      matrix:
+        cmake_arch: [x64, ARM64]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -A ${{ matrix.cmake_arch }}
+
+      - name: Build
+        run: cmake --build build --config Release
