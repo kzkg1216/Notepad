@@ -2,7 +2,7 @@
 
 A minimal, lightweight Notepad clone for Windows, written in C++ with the plain Win32 API (no external GUI libraries). It ships as a single, statically linked executable with no runtime dependencies.
 
-## Features (MVP)
+## Features
 
 - New
 - Open
